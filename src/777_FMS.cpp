@@ -6,39 +6,42 @@
 enum FMS_constants
 {
 	N_MAX_DATABUS_QUEUE_PROC = 1024,
-	N_CUSTOM_STR_DR_LENGTH = 2048
+	N_CUSTOM_STR_DR_LENGTH = 2048,
+	NAV_REF_ICAO_BUF_LENGTH = 5
 };
 
 #ifndef XPLM400
 	#error This is made to be compiled against the XPLM400 SDK
 #endif
 
-std::vector<int> int_dr_values = { 0 };
-std::vector<double> double_dr_values = { 0, 0, 0 };
-char in_dr[4] = { "" };
-char out_dr[4] = { "" };
-char fmc_line_1_big[24] = { "" };
-char fmc_line_2_big[24] = { "" };
-char fmc_line_3_big[24] = { "" };
-char fmc_line_4_big[24] = { "" };
-char fmc_line_5_big[24] = { "" };
-char fmc_line_6_big[24] = { "" };
-char fmc_line_7_big[24] = { "" };
-char scratchpad_msg[24] = { "" };
+std::vector<int> int_dr_values = { 0, 0 };
+std::vector<double> double_dr_values = { 0, 0, 0, 0 };
+char nav_ref_in_icao[NAV_REF_ICAO_BUF_LENGTH];
+char nav_ref_out_icao[NAV_REF_ICAO_BUF_LENGTH];
+char fmc_line_1_big[24];
+char fmc_line_2_big[24];
+char fmc_line_3_big[24];
+char fmc_line_4_big[24];
+char fmc_line_5_big[24];
+char fmc_line_6_big[24];
+char fmc_line_7_big[24];
+char scratchpad_msg[24];
 
 std::vector<DRUtil::dref_i> int_datarefs = {
-	{{"Strato/777/UI/messages/creating_databases", false, nullptr}, &int_dr_values[0]}
+	{{"Strato/777/UI/messages/creating_databases", false, nullptr}, &int_dr_values[0]},
+	{{"Strato/777/FMC/FMC_R/clear_msg", true, nullptr}, &int_dr_values[1]}
 };
 
 std::vector<DRUtil::dref_d> double_datarefs = {
-	{{"Strato/777/test/apt_lat", false, nullptr}, &double_dr_values[0]},
-	{{"Strato/777/test/apt_lon", false, nullptr}, &double_dr_values[1]},
-	{{"Strato/777/test/apt_elev", false, nullptr}, &double_dr_values[2]}
+	{{"Strato/777/FMC/FMC_R/REF_NAV/poi_lat", false, nullptr}, &double_dr_values[0]},
+	{{"Strato/777/FMC/FMC_R/REF_NAV/poi_lon", false, nullptr}, &double_dr_values[1]},
+	{{"Strato/777/FMC/FMC_R/REF_NAV/poi_elev", false, nullptr}, &double_dr_values[2]},
+	{{"Strato/777/FMC/FMC_R/REF_NAV/poi_freq", false, nullptr}, &double_dr_values[3]}
 };
 
 std::vector<DRUtil::dref_s> str_datarefs = {
-	{{"Strato/777/test/input_icao", true, nullptr}, in_dr, 4},
-	{{"Strato/777/test/out_icao", false, nullptr}, out_dr, 4},
+	{{"Strato/777/FMC/FMC_R/REF_NAV/input_icao", true, nullptr}, nav_ref_in_icao, NAV_REF_ICAO_BUF_LENGTH},
+	{{"Strato/777/FMC/FMC_R/REF_NAV/out_icao", false, nullptr}, nav_ref_out_icao, NAV_REF_ICAO_BUF_LENGTH},
 	{{"Strato/777/FMC/line_1_big", false, nullptr}, fmc_line_1_big, 24},
 	{{"Strato/777/FMC/line_2_big", false, nullptr}, fmc_line_2_big, 24},
 	{{"Strato/777/FMC/line_3_big", false, nullptr}, fmc_line_3_big, 24},
@@ -46,7 +49,7 @@ std::vector<DRUtil::dref_s> str_datarefs = {
 	{{"Strato/777/FMC/line_5_big", false, nullptr}, fmc_line_5_big, 24},
 	{{"Strato/777/FMC/line_6_big", false, nullptr}, fmc_line_6_big, 24},
 	{{"Strato/777/FMC/line_7_big", false, nullptr}, fmc_line_7_big, 24},
-	{{"Strato/777/FMC/scratchpad_msg", false, nullptr}, scratchpad_msg, 24}
+	{{"Strato/777/FMC/FMC_R/scratchpad_msg", false, nullptr}, scratchpad_msg, 24}
 };
 
 std::vector<XPDataBus::custom_data_ref_entry> data_refs;
@@ -58,8 +61,18 @@ std::shared_ptr<StratosphereAvionics::FMC> fmc_l;
 std::shared_ptr<std::thread> avionics_thread;
 std::shared_ptr<std::thread> fmc_thread;
 
-StratosphereAvionics::fmc_in_drs fmc_in = { "Strato/777/test/input_icao" };
-StratosphereAvionics::fmc_out_drs fmc_out = { "Strato/777/test/apt_lat", "Strato/777/test/apt_lon", "Strato/777/test/apt_elev" };
+StratosphereAvionics::fmc_in_drs fmc_in = { 
+											"Strato/777/FMC/FMC_R/REF_NAV/input_icao",
+											"Strato/777/FMC/FMC_R/clear_msg"
+										  };
+StratosphereAvionics::fmc_out_drs fmc_out = { 
+											  "Strato/777/FMC/FMC_R/REF_NAV/out_icao",
+											  "Strato/777/FMC/FMC_R/REF_NAV/poi_lat", 
+											  "Strato/777/FMC/FMC_R/REF_NAV/poi_lon", 
+											  "Strato/777/FMC/FMC_R/REF_NAV/poi_elev",
+											  "Strato/777/FMC/FMC_R/REF_NAV/poi_freq",
+											  "Strato/777/FMC/FMC_R/scratchpad_msg"
+											};
 
 int data_refs_created = 0;
 
