@@ -94,7 +94,7 @@ namespace XPDataBus
 	void DataBus::add_to_get_queue(std::string dr_name, std::promise<generic_val>* prom, int offset)
 	{
 		std::lock_guard<std::mutex> lock(get_queue_mutex);
-		get_queue.push_back(get_req{ dr_name, prom, offset });
+		get_queue.push(get_req{ dr_name, prom, offset });
 	}
 
 	XPLMDataRef DataBus::add_data_ref_entry(std::string* dr_name)
@@ -185,7 +185,7 @@ namespace XPDataBus
 	void DataBus::set_data(std::string dr_name, generic_val value)
 	{
 		std::lock_guard<std::mutex> lock(set_queue_mutex);
-		set_queue.push_back(set_req{ dr_name, value });
+		set_queue.push(set_req{ dr_name, value });
 	}
 
 	void DataBus::set_datai(std::string dr_name, int value, int offset)
@@ -378,9 +378,19 @@ namespace XPDataBus
 			{
 				data_length = str_length;
 			}
-			for (int i = 0; i < data_length; i++)
+			if (str_length == 1 && in->offset == -1) // Set all elements of output string to 1 character
 			{
-				data[i + in->offset] = in->str.at(i);
+				for(int i = 0; i < ptr.n_length; i++)
+				{
+					data[i] = in->str.at(0);
+				}
+			}
+			else
+			{
+				for (int i = 0; i < data_length; i++)
+				{
+					data[i + in->offset] = in->str.at(i);
+				}
 			}
 		}
 	}
@@ -455,8 +465,8 @@ namespace XPDataBus
 		while (get_queue.size() && counter < max_queue_refresh)
 		{
 			std::lock_guard<std::mutex> lock(get_queue_mutex);
-			get_req data = get_queue.back();
-			get_queue.erase(get_queue.end() - 1);
+			get_req data = get_queue.front();
+			get_queue.pop();
 			generic_val tmp = { {0}, "", 0, data.offset};
 			if (get_custom_data_ref(&data.dref, &tmp) != 1)
 			{
@@ -476,8 +486,8 @@ namespace XPDataBus
 		while (set_queue.size() && counter < max_queue_refresh)
 		{
 			std::lock_guard<std::mutex> lock(set_queue_mutex);
-			set_req data = set_queue.back();
-			set_queue.erase(set_queue.end() - 1);
+			set_req data = set_queue.front();
+			set_queue.pop();
 			int retval = 0;
 			if (set_custom_data_ref(&data.dref, &data.val) == 0)
 			{
@@ -508,8 +518,8 @@ namespace XPDataBus
 		while (get_queue.size())
 		{
 			generic_val tmp = { {0}, "", 0, 0 };
-			get_req data = get_queue[0];
-			get_queue.erase(get_queue.begin());
+			get_req data = get_queue.front();
+			get_queue.pop();
 			data.prom->set_value(tmp);
 		}
 	}

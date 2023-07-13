@@ -11,6 +11,7 @@
 #include "XPLMPlugin.h"
 #include "common.h"
 #include <vector>
+#include <queue>
 #include <future>
 #include <unordered_map>
 #include <mutex>
@@ -49,9 +50,9 @@ namespace XPDataBus
 	class DataBus
 	{
 	public:
-		std::vector<get_req> get_queue;
+		std::queue<get_req> get_queue;
 		std::mutex get_queue_mutex;
-		std::vector<set_req> set_queue;
+		std::queue<set_req> set_queue;
 		std::mutex set_queue_mutex;
 		uint64_t max_queue_refresh;
 
